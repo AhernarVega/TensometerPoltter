@@ -1,0 +1,209 @@
+﻿<Window x:Class="WPF_MVVM_NET.MainWindow"
+		xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+		xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+		xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+		xmlns:mvm="clr-namespace:TensometerPoltter.ViewModels"
+		xmlns:lc2="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+		xmlns:local="clr-namespace:WPF_MVVM_NET"
+		mc:Ignorable="d"
+		Title="MainWindow"
+		MinHeight="450"
+		Height="450"
+		MinWidth="900"
+		Width="900">
+
+	<Window.DataContext>
+		<mvm:MainWindowViewModel />
+	</Window.DataContext>
+
+	<Window.Resources>
+		<Style TargetType="Button">
+			<Setter Property="Margin"
+					Value="5" />
+			<Setter Property="Padding"
+					Value="20, 5" />
+		</Style>
+		<Style TargetType="GroupBox">
+			<Setter Property="HeaderTemplate">
+				<Setter.Value>
+					<DataTemplate>
+						<TextBlock Text="{Binding}"
+								   FontWeight="Bold"
+								   FontStyle="Italic"/>
+					</DataTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
+	</Window.Resources>
+
+	<DockPanel>
+		<Menu DockPanel.Dock="Top"
+			  Height="20"
+			  FontSize="12">
+			
+			<MenuItem Header="Файл">
+				<MenuItem Header="Сохранить файл" />
+			</MenuItem>
+			<MenuItem Header="Управление">
+				<MenuItem Header="Старт"
+						  Command="{Binding Path=StartCmd}" />
+				<MenuItem Header="Стоп"
+						  Command="{Binding Path=EndCmd}" />
+			</MenuItem>
+			<MenuItem Header="Данные">
+				<MenuItem Header="Сброс данных"
+						  Command="{Binding Path=ResetDataCmd}" />
+				<MenuItem Header="Сброс масштаба"
+						  Command="{Binding Path=ResetScaleCmd}" />
+			</MenuItem>
+			<Menu.Resources>
+				<Style TargetType="MenuItem">
+					<Setter Property="FontSize"
+							Value="12" />
+				</Style>
+			</Menu.Resources>
+		</Menu>
+		<Grid>
+			<Grid.RowDefinitions>
+				<RowDefinition Height="auto" />
+				<RowDefinition Height="*" />
+			</Grid.RowDefinitions>
+
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="4*" />
+				<ColumnDefinition Width="*" />
+			</Grid.ColumnDefinitions>
+
+			<GroupBox Header="Элементы управления"
+					  Grid.Row="0"
+					  Grid.Column="0"
+					  Grid.ColumnSpan="2"
+					  BorderThickness="1"
+					  BorderBrush="Black">
+				<StackPanel Orientation="Horizontal">
+					<Button Command="{Binding Path=StartCmd}">
+						Старт
+					</Button>
+					<Button Command="{Binding Path=EndCmd}">
+						Стоп
+					</Button>
+					<Button Command="{Binding Path=ResetDataCmd}">
+						Сброс данных
+					</Button>
+					<Button Command="{Binding Path=ResetScaleCmd}">
+						Сброс масштаба
+					</Button>
+					<StatusBar Margin="0, 7">
+						<StackPanel Orientation="Horizontal">
+							<Border BorderThickness="1"
+									BorderBrush="DarkCyan"
+									Padding="2"
+									Margin="4, 0, 2, 0"
+									VerticalAlignment="Center">
+								<TextBlock Text="{Binding Path=Status}"
+										   MinWidth="70"
+										   Width="auto"
+										   TextAlignment="Center">
+								</TextBlock>
+							</Border>
+							<Border BorderThickness="1"
+									BorderBrush="DarkGoldenrod"
+									Padding="2"
+									Margin="5, 0, 24, 0"
+									VerticalAlignment="Center">
+								<TextBlock Text="{Binding Path=StatusDataFile}"
+										   MinWidth="150"
+										   Width="auto"
+										   TextAlignment="Center">
+								</TextBlock>
+							</Border>
+							<TextBlock Text="{Binding StringFormat={}{0} об/мин, Path=IncomingTurnData}"
+									   Width="auto"
+									   VerticalAlignment="Center"
+									   TextAlignment="Center">
+
+							</TextBlock>
+						</StackPanel>
+					</StatusBar>
+				</StackPanel>
+			</GroupBox>
+
+			<GroupBox Header="График"
+					  Grid.Row="1"
+					  Grid.Column="0"
+					  BorderThickness="1"
+					  BorderBrush="Black"
+					  Margin="5,0,0,5">
+				<Grid Margin="10,5,0,5">
+					<Grid.RowDefinitions>
+						<RowDefinition Height="auto" />
+						<RowDefinition Height="*" />
+						<RowDefinition Height="auto" />
+					</Grid.RowDefinitions>
+					<Border Grid.Row="0"
+							BorderBrush="Black"
+							BorderThickness="1"
+							HorizontalAlignment="Left">
+						<TextBlock Text="{Binding StringFormat=Максимальное значение {0}, Path=MaxTenzValue}"
+								   Padding="5,2" />
+					</Border>
+
+					<lc2:CartesianChart Grid.Row="1"
+										SyncContext="{Binding Path=Sync}"
+										Series="{Binding Path=SeriesPlot}"
+										ZoomMode="Both, InvertPanningPointerTrigger"
+										AnimationsSpeed="0"
+										XAxes="{Binding Path=ScaleX, UpdateSourceTrigger=PropertyChanged}"
+										YAxes="{Binding Path=ScaleY, UpdateSourceTrigger=PropertyChanged}">
+					</lc2:CartesianChart>
+					<Border Grid.Row="2"
+							BorderBrush="Black"
+							BorderThickness="1"
+							HorizontalAlignment="Left">
+						<TextBlock Text="{Binding StringFormat=Минимальное значение {0}, Path=MinTenzValue}"
+								   Padding="5,2" />
+					</Border>
+				</Grid>
+			</GroupBox>
+
+			<StackPanel Grid.Row="1"
+						Grid.Column="1">
+				<GroupBox Header="Настройки оборотов"
+						  BorderThickness="1"
+						  BorderBrush="Black"
+						  Margin="5, 0, 10, 0"
+						  Width="auto">
+					<StackPanel>
+						<CheckBox Content="Скользящее среднее"
+								  VerticalAlignment="Center"
+								  Margin="5"
+								  IsChecked="{Binding Path=MovingTurnAverage}"></CheckBox>
+
+					</StackPanel>
+				</GroupBox>
+				<GroupBox Header="Настройки графиков"
+						  BorderThickness="1"
+						  BorderBrush="Black"
+						  Margin="5, 0, 10, 0"
+						  Width="auto">
+					<StackPanel>
+						<CheckBox Content="Скользящее среднее"
+								  VerticalAlignment="Center"
+								  Margin="5"
+								  IsChecked="{Binding Path=MovingValueAverage}"></CheckBox>
+						<CheckBox Content="Медианное усреднение"
+								  VerticalAlignment="Center"
+								  Margin="5"
+								  IsChecked="{Binding Path=MedianValueAverage}"></CheckBox>
+					</StackPanel>
+				</GroupBox>
+			</StackPanel>
+
+			<!--<TextBlock Grid.Row="1"
+					   Grid.Column="1"
+					   Text="{Binding Path=IncomingData}">
+			</TextBlock>-->
+		</Grid>
+	</DockPanel>
+</Window>
