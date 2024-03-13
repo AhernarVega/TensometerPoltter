@@ -5,6 +5,7 @@
 		xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 		xmlns:mvm="clr-namespace:TensometerPoltter.ViewModels"
 		xmlns:lc2="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+		xmlns:int="http://schemas.microsoft.com/xaml/behaviors"
 		xmlns:local="clr-namespace:WPF_MVVM_NET"
 		mc:Ignorable="d"
 		Title="MainWindow"
@@ -132,7 +133,8 @@
 										ZoomMode="Both, InvertPanningPointerTrigger"
 										AnimationsSpeed="0"
 										XAxes="{Binding Path=ScaleX, UpdateSourceTrigger=PropertyChanged}"
-										YAxes="{Binding Path=ScaleY, UpdateSourceTrigger=PropertyChanged}">
+										YAxes="{Binding Path=ScaleY, UpdateSourceTrigger=PropertyChanged}"
+										>
 					</lc2:CartesianChart>
 					<Border Grid.Row="2"
 							BorderBrush="Black"

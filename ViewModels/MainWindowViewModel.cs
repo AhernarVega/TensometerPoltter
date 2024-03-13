@@ -39,7 +39,7 @@ namespace TensometerPoltter.ViewModels
 
         #region ПЕРЕМЕННЫЕ
         // Объект для работы с UDP
-        private readonly UDPModel udp;
+        private UDPModel udp;
         // Флаг "чтения" данных
         private bool isReading;
         // Разрядность медианного усреднения
@@ -119,8 +119,8 @@ namespace TensometerPoltter.ViewModels
         }
 
         // Для отображения приходящих оборотов
-        private int incomingTurnData;
-        public int IncomingTurnData
+        private double incomingTurnData;
+        public double IncomingTurnData
         {
             get => incomingTurnData;
             set => Set(ref incomingTurnData, value);
@@ -208,7 +208,7 @@ namespace TensometerPoltter.ViewModels
                 // То ищем нужный Wi-Fi - иначе неверно
                 foreach (var connectionName in NativeWifi.EnumerateInterfaceConnections())
                 {
-                    if (connectionName.ProfileName == "Tenz")
+                    if (connectionName.ProfileName == "upm")
                     {
                         return true;
                     }
@@ -377,7 +377,6 @@ namespace TensometerPoltter.ViewModels
         }
         private bool CanSaveFileCmdExecute(object param) => (valuesForSave.Count > 0);
         #endregion SaveFileCmd
-
         #endregion КОМАНДЫ
 
         public MainWindowViewModel()
@@ -402,7 +401,7 @@ namespace TensometerPoltter.ViewModels
             minTenzValue = 0;
             valuesForSave = new();
             dataWriteFlag = false;
-            maxChartValues = 250;
+            maxChartValues = 4000;
 
             scaleX = new();
             scaleY = new[]
@@ -494,14 +493,18 @@ namespace TensometerPoltter.ViewModels
                     udp.ClearBuffer();
 
                     // Предыдущее значение оборотов
-                    int oldTurnovers = 0;
+                    double oldTurnovers = 0;
 
                     while (isReading)
                     {
+
+                        Random rand = new();
+                        var result = Enumerable.Range(0, 100).Select(i => (byte)rand.Next(0, 255)).ToList();
+
                         lock (Sync)
                         {
                             // Получение списка byte
-                            var result = udp.ReceiveMessageAsync().Result;
+                            //var result = udp.ReceiveMessageAsync().Result;
 
                             if (result.Count > 0)
                             {
@@ -534,8 +537,6 @@ namespace TensometerPoltter.ViewModels
                                             tempValue /= avgValueDepth;
                                         }
                                     }
-                                    // Добавление данных на график
-                                    ValuesForSeriesPlot[0].Add(tempValue);
                                     // Если в этом пакете есть "метка" оборота
                                     if ((temp & 0x8000) == 1)
                                     {
@@ -543,9 +544,14 @@ namespace TensometerPoltter.ViewModels
                                         turnControlerLines.Add(maxChartValues);
                                     }
 
-                                    // Максимально отображается 250 элементов
+
+                                    // Максимально отображается maxChartValues элементов
                                     if (ValuesForSeriesPlot[0].Count > maxChartValues)
                                         ValuesForSeriesPlot[0].RemoveAt(0);
+                                    // Добавление данных на график
+                                    ValuesForSeriesPlot[0].Add(tempValue);
+
+                                    Task.Delay(10);
 
                                     // Если линия, показывающая оборот прошла 250 значений, удаляем ее из коллекции
                                     for (int ii = 0; ii < turnControlerLines.Count; ii++)
@@ -588,14 +594,14 @@ namespace TensometerPoltter.ViewModels
 
                                 #region Расчет оборотов
                                 // Получение значения оборотов
-                                var tempTurnovers = (int)(result[fullLength - 3] << 8 | result[fullLength - 2]);
+                                var tempTurnovers = (float)(result[fullLength - 3] << 8 | result[fullLength - 2]);
                                 if (movingTurnAverage)
-                                    oldTurnovers = (int)((oldTurnovers * 19 + tempTurnovers) / 20);
+                                    oldTurnovers = (float)((oldTurnovers * 19 + tempTurnovers) / 20);
                                 else
                                     oldTurnovers = tempTurnovers;
                                 #endregion Расчет оборотов
 
-                                IncomingTurnData = oldTurnovers;
+                                IncomingTurnData = Math.Round(oldTurnovers, 0);
                             }
                         }
                     }
