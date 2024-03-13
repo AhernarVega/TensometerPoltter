@@ -39,7 +39,7 @@ namespace TensometerPoltter.ViewModels
 
         #region ПЕРЕМЕННЫЕ
         // Объект для работы с UDP
-        private UDPModel udp;
+        private readonly UDPModel udp;
         // Флаг "чтения" данных
         private bool isReading;
         // Разрядность медианного усреднения
@@ -47,13 +47,15 @@ namespace TensometerPoltter.ViewModels
         // Разрядность медианного усреднения
         private readonly int medianDepth;
         // Буфер данных
-        private int[] medianBuffer;
+        private readonly int[] medianBuffer;
         // Счетчик буфера
         private int medianCounter;
         // Список для записи значений
-        private List<int> valuesForSave;
+        private readonly List<int> valuesForSave;
         // Флаг переключения записи данных
         private bool dataWriteFlag;
+        // Максимальное число значений на графике
+        private readonly int maxChartValues;
         #endregion ПЕРЕМЕННЫЕ
 
         #region СВОЙСТВА
@@ -64,7 +66,7 @@ namespace TensometerPoltter.ViewModels
             get => status;
             set => Set(ref status, value);
         }
-        
+
         // Отображение статуса работы с файлом
         private string statusDataFile;
         public string StatusDataFile
@@ -123,6 +125,27 @@ namespace TensometerPoltter.ViewModels
             get => incomingTurnData;
             set => Set(ref incomingTurnData, value);
         }
+
+        // Список масштабов для графика
+        private List<string> scalesChart;
+        public List<string> ScalesChart
+        {
+            get => scalesChart;
+            set => Set(ref scalesChart, value);
+        }
+
+        // Текущий масштаб граифка
+        private int selectedScaleIndexChart;
+        public int SelectedScaleIndexChart
+        {
+            get => selectedScaleIndexChart;
+            set
+            {
+                Set(ref selectedScaleIndexChart, value);
+                ResetScaleMethod();
+            }
+        }
+
         // Текст для кнопки 
         #region ДЛЯ ГРАФИКОВ
         // Масштаб оси X
@@ -133,8 +156,8 @@ namespace TensometerPoltter.ViewModels
             set => Set(ref scaleX, value);
         }
         // Масштаб оси Y
-        private Axis scaleY;
-        public Axis ScaleY
+        private Axis[] scaleY;
+        public Axis[] ScaleY
         {
             get => scaleY;
             set => Set(ref scaleY, value);
@@ -142,12 +165,13 @@ namespace TensometerPoltter.ViewModels
 
         // Данные графика
         public ObservableCollection<ObservableCollection<int>> ValuesForSeriesPlot { get; set; }
+        // Для удаленеия полос оборотов
+        private readonly List<int> turnControlerLines;
 
         // Для отображения графика (Серии)
         public ISeries[] SeriesPlot { get; set; }
         #endregion ДЛЯ ГРАФИКОВ
         #endregion СВОЙСТВА
-
 
         #region КОМАНДЫ 
         #region StartCmd
@@ -156,6 +180,7 @@ namespace TensometerPoltter.ViewModels
         {
             try
             {
+                OnResetDataCmdExecuted(param);
                 isReading = true;
                 SendData();
                 Thread.Sleep(250);
@@ -201,7 +226,7 @@ namespace TensometerPoltter.ViewModels
         }
         private bool CanEndCmdExecute(object param) => true;
         #endregion EndCmd
-        #region ResetCmd
+        #region ResetDataCmd
         public ICommand ResetDataCmd { get; }
         public void OnResetDataCmdExecuted(object param)
         {
@@ -213,21 +238,50 @@ namespace TensometerPoltter.ViewModels
             OnEndCmdExecuted(param);
         }
         private bool CanResetDataCmdExecute(object param) => true;
-        #endregion ResetCmd
+        #endregion ResetDataCmd
         #region ResetScaleCmd
-        public ICommand ResetScaleCmd { get; }
-        public void OnResetScaleCmdExecuted(object param)
+
+        void ResetScaleMethod()
         {
+            if (selectedScaleIndexChart != 0)
+            {
+                var range = 1 + 4 * selectedScaleIndexChart;
+                var min = -1 * Convert.ToInt32(scalesChart[selectedScaleIndexChart]);
+                var max = Convert.ToInt32(scalesChart[selectedScaleIndexChart]);
+                if (selectedScaleIndexChart <= 3)
+                {
+                    ScaleY[0].CustomSeparators = Enumerable.Range(0, range).Select(i => (double)(min + 50 * i)).ToArray();
+                    ScaleY[0].MinLimit = min;
+                    ScaleY[0].MaxLimit = max;
+                }
+                else
+                {
+                    ScaleY[0].CustomSeparators = Enumerable.Range(0, range).Select(i => (double)(min + 100 * i)).ToArray();
+                    ScaleY[0].MinLimit = min;
+                    ScaleY[0].MaxLimit = max;
+                }
+            }
+            else
+            {
+                ScaleY[0].CustomSeparators = null;
+                ScaleY[0].MinLimit = null;
+                ScaleY[0].MaxLimit = null;
+            }
+
+
             ScaleX.MinLimit = null;
             ScaleX.MaxLimit = null;
-            ScaleY.MinLimit = null;
-            ScaleY.MaxLimit = null;
             OnPropertyChanged(nameof(ScaleX));
             OnPropertyChanged(nameof(ScaleY));
         }
+
+        public ICommand ResetScaleCmd { get; }
+        public void OnResetScaleCmdExecuted(object param)
+        {
+            ResetScaleMethod();
+        }
         private bool CanResetScaleCmdExecute(object param) => true;
         #endregion ResetCmd
-
         #region SwitchRecordDataCmd
         public ICommand SwitchRecordDataCmd { get; }
         public void OnSwitchRecordDataCmdExecuted(object param)
@@ -247,7 +301,6 @@ namespace TensometerPoltter.ViewModels
         }
         private bool CanSwitchRecordDataCmdExecute(object param) => isReading;
         #endregion SwitchRecordDataCmd
-
         #region SaveFileCmd
         public ICommand SaveFileCmd { get; }
         public void OnSaveFileCmdExecuted(object param)
@@ -269,7 +322,7 @@ namespace TensometerPoltter.ViewModels
                 Filter = "Ini files(*.ini)|*.ini|ADC files(*.adc)|*.adc"
             };
 
-            if(saveFileDialog.ShowDialog() == true)
+            if (saveFileDialog.ShowDialog() == true)
             {
                 // Запоминаем имя файла
                 var fileName = saveFileDialog.FileName;
@@ -305,15 +358,24 @@ namespace TensometerPoltter.ViewModels
                 using FileStream writerData = new(fileName + ".ini", FileMode.Create);
                 using BinaryWriter binWriterData = new(writerData, Encoding.UTF8);
 
-                // Заполняем данными
-                foreach(var item in valuesForSave)
+                // Заполняем данными (Сохраняем каждое 10ое значение (Усреднение))
+                for (int i = 0; i < valuesForSave.Count / 10; i++)
                 {
-
+                    int sing = 0;
+                    int value = 0;
+                    for (int ii = 0; ii < 10; ii++)
+                    {
+                        sing += valuesForSave[i * 10 + ii] & 0x8000;
+                        value += valuesForSave[i * 10 + ii];
+                    }
+                    value /= 10;
+                    binWriterData.Write((short)value);
+                    binWriterData.Write((short)sing);
                 }
             }
 
         }
-        private bool CanSaveFileCmdExecute(object param) => true;
+        private bool CanSaveFileCmdExecute(object param) => (valuesForSave.Count > 0);
         #endregion SaveFileCmd
 
         #endregion КОМАНДЫ
@@ -328,6 +390,9 @@ namespace TensometerPoltter.ViewModels
 
             Sync = new object();
             incomingTurnData = 0;
+            scalesChart = new() {
+                "auto", "100", "200", "300", "400", "500", "600"
+            };
             status = "Ожидание";
             statusDataFile = "Данные не записываются";
             movingTurnAverage = false;
@@ -337,14 +402,12 @@ namespace TensometerPoltter.ViewModels
             minTenzValue = 0;
             valuesForSave = new();
             dataWriteFlag = false;
+            maxChartValues = 250;
 
             scaleX = new();
-            scaleY = new()
+            scaleY = new[]
             {
-                Labels = new List<string>()
-                {
-                    "1", "2", "3", "4", "5"
-                }
+                new Axis()
             };
 
             ValuesForSeriesPlot = new()
@@ -356,10 +419,10 @@ namespace TensometerPoltter.ViewModels
                 new ObservableCollection<int>
                 {
                     10, 9, 8, 3, 6, 1, 6, 5, 2, 1
-                },
-                new ObservableCollection<int>(),
-                new ObservableCollection<int>()
+                }
             };
+
+            turnControlerLines = new();
 
             SeriesPlot = new ISeries[]
             {
@@ -370,37 +433,13 @@ namespace TensometerPoltter.ViewModels
                     GeometryStroke = null,
                     LineSmoothness = 0,
                     Fill = null,
-                    Stroke = new SolidColorPaint(SKColors.Red, 2)
+                    Stroke = new SolidColorPaint(SKColors.CornflowerBlue, 3),
                 },
-                new LineSeries<int>
+                new ColumnSeries<int>
                 {
                     Values = ValuesForSeriesPlot[1],
-                    GeometryFill = null,
-                    GeometryStroke = null,
-                    LineSmoothness = 0,
-
-                    Fill = null,
-                    Stroke = new SolidColorPaint(SKColors.Green, 2)
-                },
-                new LineSeries<int>
-                {
-                    Values = ValuesForSeriesPlot[2],
-                    GeometryFill = null,
-                    GeometryStroke = null,
-                    LineSmoothness = 0,
-
-                    Fill = null,
-                    Stroke = new SolidColorPaint(SKColors.Green, 2)
-                },
-                new LineSeries<int>
-                {
-                    Values = ValuesForSeriesPlot[3],
-                    GeometryFill = null,
-                    GeometryStroke = null,
-                    LineSmoothness = 0,
-
-                    Fill = null,
-                    Stroke = new SolidColorPaint(SKColors.Green, 2)
+                    MaxBarWidth = 5,
+                    Fill = new SolidColorPaint(SKColors.Red)
                 }
             };
 
@@ -411,12 +450,6 @@ namespace TensometerPoltter.ViewModels
             SwitchRecordDataCmd = new LambdaCommand(OnSwitchRecordDataCmdExecuted, CanSwitchRecordDataCmdExecute);
             SaveFileCmd = new LambdaCommand(OnSaveFileCmdExecuted, CanSaveFileCmdExecute);
         }
-
-        //int SinGen(int i)
-        //{
-        //    double sin_res = Math.Sin(2.0f * Math.PI * F * i + SHIFT);
-        //    return Convert.ToInt32(AMP * sin_res);
-        //}
 
         private async void SendData()
         {
@@ -505,23 +538,54 @@ namespace TensometerPoltter.ViewModels
                                     ValuesForSeriesPlot[0].Add(tempValue);
                                     // Если в этом пакете есть "метка" оборота
                                     if ((temp & 0x8000) == 1)
-                                        ValuesForSeriesPlot[1].Add(temp);
+                                    {
+                                        ValuesForSeriesPlot[1].Add(512);
+                                        turnControlerLines.Add(maxChartValues);
+                                    }
 
                                     // Максимально отображается 250 элементов
-                                    if (ValuesForSeriesPlot[0].Count > 250)
+                                    if (ValuesForSeriesPlot[0].Count > maxChartValues)
                                         ValuesForSeriesPlot[0].RemoveAt(0);
+
+                                    // Если линия, показывающая оборот прошла 250 значений, удаляем ее из коллекции
+                                    for (int ii = 0; ii < turnControlerLines.Count; ii++)
+                                    {
+                                        if (turnControlerLines[ii] == 0)
+                                            ValuesForSeriesPlot[1].RemoveAt(0);
+                                        else
+                                            turnControlerLines[ii]--;
+                                    }
+
+                                    // Очищаем из коллекции, которая следила за "жизнью" линии оборота ненужные значения
+                                    if (turnControlerLines.Count != ValuesForSeriesPlot[1].Count)
+                                    {
+                                        int different = Math.Abs(turnControlerLines.Count - ValuesForSeriesPlot[1].Count);
+                                        for (int ii = 0; ii < different; ii++)
+                                        {
+                                            turnControlerLines.RemoveAt(0);
+                                        }
+                                    }
                                 }
 
-                                // Первоначальное заполнение значением
-                                MinTenzValue = MaxTenzValue = ValuesForSeriesPlot[0][0];
+                                // Запись данных в коллекцию для дальнейшего сохранения их в файл
+                                if (dataWriteFlag)
+                                    valuesForSave.Add(ValuesForSeriesPlot[0][^1]);
+
+                                // Временные значения максимума и минимума для их поиска
+                                var minTemp = ValuesForSeriesPlot[0][0];
+                                var maxTemp = ValuesForSeriesPlot[0][0];
+
                                 // Поиск минимального и максимального
                                 foreach (var value in ValuesForSeriesPlot[0])
                                 {
-                                    if (MinTenzValue > value)
-                                        MinTenzValue = value;
-                                    if (MaxTenzValue < value)
-                                        MaxTenzValue = value;
+                                    if (minTemp > value)
+                                        minTemp = value;
+                                    if (maxTemp < value)
+                                        maxTemp = value;
                                 }
+                                MaxTenzValue = maxTemp;
+                                MinTenzValue = minTemp;
+
                                 #region Расчет оборотов
                                 // Получение значения оборотов
                                 var tempTurnovers = (int)(result[fullLength - 3] << 8 | result[fullLength - 2]);

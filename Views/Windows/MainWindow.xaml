@@ -8,10 +8,10 @@
 		xmlns:local="clr-namespace:WPF_MVVM_NET"
 		mc:Ignorable="d"
 		Title="MainWindow"
-		MinHeight="450"
-		Height="450"
-		MinWidth="900"
-		Width="900">
+		MinHeight="550"
+		Height="550"
+		MinWidth="970"
+		Width="970">
 
 	<Window.DataContext>
 		<mvm:MainWindowViewModel />
@@ -22,7 +22,7 @@
 			<Setter Property="Margin"
 					Value="5" />
 			<Setter Property="Padding"
-					Value="20, 5" />
+					Value="10, 5" />
 		</Style>
 		<Style TargetType="GroupBox">
 			<Setter Property="HeaderTemplate">
@@ -80,7 +80,8 @@
 					  Grid.Column="0"
 					  Grid.ColumnSpan="2"
 					  BorderThickness="1"
-					  BorderBrush="Black">
+					  BorderBrush="Black"
+					  Margin="5, 0">
 				<StackPanel Orientation="Horizontal">
 					<Button Command="{Binding Path=StartCmd}">
 						Старт
@@ -94,38 +95,13 @@
 					<Button Command="{Binding Path=ResetScaleCmd}">
 						Сброс масштаба
 					</Button>
-					<StatusBar Margin="0, 7">
-						<StackPanel Orientation="Horizontal">
-							<Border BorderThickness="1"
-									BorderBrush="DarkCyan"
-									Padding="2"
-									Margin="4, 0, 2, 0"
-									VerticalAlignment="Center">
-								<TextBlock Text="{Binding Path=Status}"
-										   MinWidth="70"
-										   Width="auto"
-										   TextAlignment="Center">
-								</TextBlock>
-							</Border>
-							<Border BorderThickness="1"
-									BorderBrush="DarkGoldenrod"
-									Padding="2"
-									Margin="5, 0, 24, 0"
-									VerticalAlignment="Center">
-								<TextBlock Text="{Binding Path=StatusDataFile}"
-										   MinWidth="150"
-										   Width="auto"
-										   TextAlignment="Center">
-								</TextBlock>
-							</Border>
-							<TextBlock Text="{Binding StringFormat={}{0} об/мин, Path=IncomingTurnData}"
-									   Width="auto"
-									   VerticalAlignment="Center"
-									   TextAlignment="Center">
-
-							</TextBlock>
-						</StackPanel>
-					</StatusBar>
+					<Button Command="{Binding Path=SwitchRecordDataCmd}">
+						Начать запись
+					</Button>
+					<Button Command="{Binding Path=SaveFileCmd}">
+						Сохранить данные
+					</Button>
+					
 				</StackPanel>
 			</GroupBox>
 
@@ -144,9 +120,10 @@
 					<Border Grid.Row="0"
 							BorderBrush="Black"
 							BorderThickness="1"
-							HorizontalAlignment="Left">
+							HorizontalAlignment="Left"
+							CornerRadius="5">
 						<TextBlock Text="{Binding StringFormat=Максимальное значение {0}, Path=MaxTenzValue}"
-								   Padding="5,2" />
+								   Padding="15,2" />
 					</Border>
 
 					<lc2:CartesianChart Grid.Row="1"
@@ -160,19 +137,60 @@
 					<Border Grid.Row="2"
 							BorderBrush="Black"
 							BorderThickness="1"
-							HorizontalAlignment="Left">
+							HorizontalAlignment="Left"
+							CornerRadius="5">
 						<TextBlock Text="{Binding StringFormat=Минимальное значение {0}, Path=MinTenzValue}"
-								   Padding="5,2" />
+								   Padding="15,2" />
 					</Border>
 				</Grid>
 			</GroupBox>
 
 			<StackPanel Grid.Row="1"
 						Grid.Column="1">
+				<GroupBox Header="Статусы и данные"
+						  BorderThickness="1"
+						  BorderBrush="Black"
+						  Margin="5, 0, 10, 5">
+					<StackPanel Orientation="Vertical">
+						<TextBlock Text="Статус передачи данных"
+								   HorizontalAlignment="Center"/>
+						<Border BorderThickness="1"
+								BorderBrush="DarkCyan"
+								Padding="2"
+								Margin="0, 5"
+								VerticalAlignment="Center">
+							<TextBlock Text="{Binding Path=Status}"
+									   MinWidth="70"
+									   Width="auto"
+									   TextAlignment="Center">
+							</TextBlock>
+						</Border>
+						<TextBlock Text="Статус записи данных"
+								   HorizontalAlignment="Center" />
+						<Border BorderThickness="1"
+								BorderBrush="DarkGoldenrod"
+								Padding="2"
+								Margin="0, 5"
+								VerticalAlignment="Center">
+							<TextBlock Text="{Binding Path=StatusDataFile}"
+									   MinWidth="150"
+									   Width="auto"
+									   TextAlignment="Center">
+							</TextBlock>
+						</Border>
+						<TextBlock Text="{Binding StringFormat={}{0} об/мин, Path=IncomingTurnData}"
+								   Margin="0, 5"
+								   Width="auto"
+								   VerticalAlignment="Center"
+								   TextAlignment="Center">
+
+						</TextBlock>
+					</StackPanel>
+				</GroupBox>
 				<GroupBox Header="Настройки оборотов"
 						  BorderThickness="1"
 						  BorderBrush="Black"
-						  Margin="5, 0, 10, 0"
+						  Margin="5, 0, 10, 5"
 						  Width="auto">
 					<StackPanel>
 						<CheckBox Content="Скользящее среднее"
@@ -196,6 +214,11 @@
 								  VerticalAlignment="Center"
 								  Margin="5"
 								  IsChecked="{Binding Path=MedianValueAverage}"></CheckBox>
+						<ComboBox Margin="5"
+								  ItemsSource="{Binding Path=ScalesChart}"
+								  SelectedIndex="{Binding Path=SelectedScaleIndexChart}">
+
+						</ComboBox>
 					</StackPanel>
 				</GroupBox>
 			</StackPanel>
