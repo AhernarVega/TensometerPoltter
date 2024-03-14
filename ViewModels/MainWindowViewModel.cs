@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.IO;
 using System.Linq;
@@ -59,6 +60,15 @@ namespace TensometerPoltter.ViewModels
         #endregion ПЕРЕМЕННЫЕ
 
         #region СВОЙСТВА
+
+        // Отображение статуса исполнения
+        private string testData;
+        public string TestData
+        {
+            get => testData;
+            set => Set(ref testData, value);
+        }
+
         // Отображение статуса исполнения
         private string status;
         public string Status
@@ -377,10 +387,21 @@ namespace TensometerPoltter.ViewModels
         }
         private bool CanSaveFileCmdExecute(object param) => (valuesForSave.Count > 0);
         #endregion SaveFileCmd
+        #region TestClickCmd
+        public ICommand TestClickCmd { get; }
+        public void OnTestClickCmdExecuted(object param)
+        {
+
+        }
+        private bool CanTestClickCmdExecute(object param) => true;
+        #endregion TestClickCmd
+
         #endregion КОМАНДЫ
 
         public MainWindowViewModel()
         {
+            testData = "";
+
             udp = new(4220, 4210);
             avgValueDepth = 4;
             medianDepth = 5;
@@ -401,7 +422,7 @@ namespace TensometerPoltter.ViewModels
             minTenzValue = 0;
             valuesForSave = new();
             dataWriteFlag = false;
-            maxChartValues = 4000;
+            maxChartValues = 1000;
 
             scaleX = new();
             scaleY = new[]
@@ -442,12 +463,16 @@ namespace TensometerPoltter.ViewModels
                 }
             };
 
+
+
+
             StartCmd = new LambdaCommand(OnStartCmdExecuted, CanStartCmdExecute);
             EndCmd = new LambdaCommand(OnEndCmdExecuted, CanEndCmdExecute);
             ResetDataCmd = new LambdaCommand(OnResetDataCmdExecuted, CanResetDataCmdExecute);
             ResetScaleCmd = new LambdaCommand(OnResetScaleCmdExecuted, CanResetScaleCmdExecute);
             SwitchRecordDataCmd = new LambdaCommand(OnSwitchRecordDataCmdExecuted, CanSwitchRecordDataCmdExecute);
             SaveFileCmd = new LambdaCommand(OnSaveFileCmdExecuted, CanSaveFileCmdExecute);
+            TestClickCmd = new LambdaCommand(OnTestClickCmdExecuted, CanTestClickCmdExecute);
         }
 
         private async void SendData()
@@ -494,19 +519,28 @@ namespace TensometerPoltter.ViewModels
 
                     // Предыдущее значение оборотов
                     double oldTurnovers = 0;
+                    int sampleRate = 500;
+                    double amplitude = 20;
+                    double frequency = 1;
+                    Random random = new();
+                    Stopwatch sw = new();
 
                     while (isReading)
                     {
-
-                        Random rand = new();
-                        var result = Enumerable.Range(0, 100).Select(i => (byte)rand.Next(0, 255)).ToList();
-
+                        sw.Reset();
+                        List<int> result = new List<int>();
+                        for (int i = 0; i < sampleRate; i++)
+                        {
+                            result.Add((short)(amplitude * Math.Sin((2 * Math.PI * i * frequency) / sampleRate) + random.Next(-5, 5)));
+                        }
                         lock (Sync)
                         {
                             // Получение списка byte
                             //var result = udp.ReceiveMessageAsync().Result;
+                            //var result = udp.ReceiveMessageSync();
+                            
 
-                            if (result.Count > 0)
+                            if (result.Count > 5)
                             {
                                 // Длина всего массива данных
                                 var fullLength = result.Count;
@@ -516,94 +550,95 @@ namespace TensometerPoltter.ViewModels
                                 for (int i = 0; i < tenzLength; i++)
                                 {
                                     // Преобразование данных к int
-                                    int temp = result[i++] << 8 | result[i];
+                                    //int temp = result[i++] << 8 | result[i];
                                     // Убираем флаг оборота
-                                    int tempValue = (temp & 0x7FFF) - 512;
+                                    //int tempValue = (temp & 0x7FFF) - 512;
+                                    int tempValue = result[i]; // DEBUG
                                     // Фильтрация медианным усреднением
-                                    if (medianValueAverage)
-                                    {
-                                        tempValue = MedianAvg(tempValue);
-                                    }
-                                    // Фильтрация скользящим средним
-                                    if (movingValueAverage)
-                                    {
-                                        var chartLength = ValuesForSeriesPlot[0].Count;
-                                        if (chartLength > avgValueDepth)
-                                        {
-                                            for (int ii = 1; ii < avgValueDepth; ii++)
-                                            {
-                                                tempValue += ValuesForSeriesPlot[0].ElementAt(chartLength - ii);
-                                            }
-                                            tempValue /= avgValueDepth;
-                                        }
-                                    }
+                                    //if (medianValueAverage)
+                                    //{
+                                    //    tempValue = MedianAvg(tempValue);
+                                    //}
+                                    //// Фильтрация скользящим средним
+                                    //if (movingValueAverage)
+                                    //{
+                                    //    var chartLength = ValuesForSeriesPlot[0].Count;
+                                    //    if (chartLength > avgValueDepth)
+                                    //    {
+                                    //        for (int ii = 1; ii < avgValueDepth; ii++)
+                                    //        {
+                                    //            tempValue += ValuesForSeriesPlot[0].ElementAt(chartLength - ii);
+                                    //        }
+                                    //        tempValue /= avgValueDepth;
+                                    //    }
+                                    //}
                                     // Если в этом пакете есть "метка" оборота
-                                    if ((temp & 0x8000) == 1)
-                                    {
-                                        ValuesForSeriesPlot[1].Add(512);
-                                        turnControlerLines.Add(maxChartValues);
-                                    }
-
+                                    //if ((temp & 0x8000) == 1)
+                                    //{
+                                    //    ValuesForSeriesPlot[1].Add(512);
+                                    //    turnControlerLines.Add(maxChartValues);
+                                    //}
 
                                     // Максимально отображается maxChartValues элементов
                                     if (ValuesForSeriesPlot[0].Count > maxChartValues)
                                         ValuesForSeriesPlot[0].RemoveAt(0);
                                     // Добавление данных на график
                                     ValuesForSeriesPlot[0].Add(tempValue);
-
-                                    Task.Delay(10);
+                                    //TestData += tempValue.ToString() + "\t";
 
                                     // Если линия, показывающая оборот прошла 250 значений, удаляем ее из коллекции
-                                    for (int ii = 0; ii < turnControlerLines.Count; ii++)
-                                    {
-                                        if (turnControlerLines[ii] == 0)
-                                            ValuesForSeriesPlot[1].RemoveAt(0);
-                                        else
-                                            turnControlerLines[ii]--;
-                                    }
+                                    //for (int ii = 0; ii < turnControlerLines.Count; ii++)
+                                    //{
+                                    //    if (turnControlerLines[ii] == 0)
+                                    //        ValuesForSeriesPlot[1].RemoveAt(0);
+                                    //    else
+                                    //        turnControlerLines[ii]--;
+                                    //}
 
                                     // Очищаем из коллекции, которая следила за "жизнью" линии оборота ненужные значения
-                                    if (turnControlerLines.Count != ValuesForSeriesPlot[1].Count)
-                                    {
-                                        int different = Math.Abs(turnControlerLines.Count - ValuesForSeriesPlot[1].Count);
-                                        for (int ii = 0; ii < different; ii++)
-                                        {
-                                            turnControlerLines.RemoveAt(0);
-                                        }
-                                    }
+                                    //if (turnControlerLines.Count != ValuesForSeriesPlot[1].Count)
+                                    //{
+                                    //    int different = Math.Abs(turnControlerLines.Count - ValuesForSeriesPlot[1].Count);
+                                    //    for (int ii = 0; ii < different; ii++)
+                                    //    {
+                                    //        turnControlerLines.RemoveAt(0);
+                                    //    }
+                                    //}
                                 }
-
                                 // Запись данных в коллекцию для дальнейшего сохранения их в файл
-                                if (dataWriteFlag)
-                                    valuesForSave.Add(ValuesForSeriesPlot[0][^1]);
+                                //if (dataWriteFlag)
+                                //    valuesForSave.Add(ValuesForSeriesPlot[0][^1]);
 
                                 // Временные значения максимума и минимума для их поиска
-                                var minTemp = ValuesForSeriesPlot[0][0];
-                                var maxTemp = ValuesForSeriesPlot[0][0];
+                                //var minTemp = ValuesForSeriesPlot[0][0];
+                                //var maxTemp = ValuesForSeriesPlot[0][0];
 
                                 // Поиск минимального и максимального
-                                foreach (var value in ValuesForSeriesPlot[0])
-                                {
-                                    if (minTemp > value)
-                                        minTemp = value;
-                                    if (maxTemp < value)
-                                        maxTemp = value;
-                                }
-                                MaxTenzValue = maxTemp;
-                                MinTenzValue = minTemp;
+                                //foreach (var value in ValuesForSeriesPlot[0])
+                                //{
+                                //    if (minTemp > value)
+                                //        minTemp = value;
+                                //    if (maxTemp < value)
+                                //        maxTemp = value;
+                                //}
+                                //MaxTenzValue = maxTemp;
+                                //MinTenzValue = minTemp;
 
                                 #region Расчет оборотов
                                 // Получение значения оборотов
-                                var tempTurnovers = (float)(result[fullLength - 3] << 8 | result[fullLength - 2]);
-                                if (movingTurnAverage)
-                                    oldTurnovers = (float)((oldTurnovers * 19 + tempTurnovers) / 20);
-                                else
-                                    oldTurnovers = tempTurnovers;
+                                //var tempTurnovers = (float)(result[fullLength - 3] << 8 | result[fullLength - 2]);
+                                //if (movingTurnAverage)
+                                //    oldTurnovers = (float)((oldTurnovers * 19 + tempTurnovers) / 20);
+                                //else
+                                //    oldTurnovers = tempTurnovers;
                                 #endregion Расчет оборотов
 
-                                IncomingTurnData = Math.Round(oldTurnovers, 0);
+                                //IncomingTurnData = Math.Round(oldTurnovers, 0);
+
                             }
                         }
+                        sw.Stop();
+                        //MessageBox.Show(sw.ElapsedMilliseconds.ToString());
                     }
                 });
             }

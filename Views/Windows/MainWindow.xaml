@@ -4,6 +4,7 @@
 		xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 		xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 		xmlns:mvm="clr-namespace:TensometerPoltter.ViewModels"
+		xmlns:oxyP="http://oxyplot.org/wpf/contrib"
 		xmlns:lc2="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
 		xmlns:int="http://schemas.microsoft.com/xaml/behaviors"
 		xmlns:local="clr-namespace:WPF_MVVM_NET"
@@ -84,6 +85,10 @@
 					  BorderBrush="Black"
 					  Margin="5, 0">
 				<StackPanel Orientation="Horizontal">
+					<Button Command="{Binding Path=TestClickCmd}"
+							Visibility="Collapsed">
+						Test
+					</Button>
 					<Button Command="{Binding Path=StartCmd}">
 						Старт
 					</Button>
@@ -117,6 +122,7 @@
 						<RowDefinition Height="auto" />
 						<RowDefinition Height="*" />
 						<RowDefinition Height="auto" />
+						<RowDefinition Height="auto" />
 					</Grid.RowDefinitions>
 					<Border Grid.Row="0"
 							BorderBrush="Black"
@@ -128,6 +134,7 @@
 					</Border>
 
 					<lc2:CartesianChart Grid.Row="1"
+										Margin="0, 5"
 										SyncContext="{Binding Path=Sync}"
 										Series="{Binding Path=SeriesPlot}"
 										ZoomMode="Both, InvertPanningPointerTrigger"
@@ -136,12 +143,26 @@
 										YAxes="{Binding Path=ScaleY, UpdateSourceTrigger=PropertyChanged}"
 										>
 					</lc2:CartesianChart>
+
+					<!--<oxyP:Plot Grid.Row="1"
+							   Margin="5">
+						
+					</oxyP:Plot>-->
+						
 					<Border Grid.Row="2"
 							BorderBrush="Black"
 							BorderThickness="1"
 							HorizontalAlignment="Left"
 							CornerRadius="5">
 						<TextBlock Text="{Binding StringFormat=Минимальное значение {0}, Path=MinTenzValue}"
+								   Padding="15,2" />
+					</Border>
+					<Border Grid.Row="3"
+							BorderBrush="Black"
+							BorderThickness="1"
+							HorizontalAlignment="Left"
+							CornerRadius="5">
+						<TextBlock Text="{Binding Path=MinTenzValue}"
 								   Padding="15,2" />
 					</Border>
 				</Grid>
